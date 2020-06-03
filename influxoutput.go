@@ -24,7 +24,7 @@ type InfluxOutput struct {
 }
 
 func NewInfluxOutput(serverUrl string, authToken string, org string, bucket string, measurement string, options *influxdb2.Options) *InfluxOutput {
-	client := influxdb2.NewClientWithOptions(serverUrl, authToken, options.SetBatchSize(32))
+	client := influxdb2.NewClientWithOptions(serverUrl, authToken, options)
 	return &InfluxOutput{
 		client:      client,
 		writeApi:    client.WriteApi(org, bucket),
@@ -98,8 +98,10 @@ func (influx *InfluxOutput) getHost(addr []byte) string {
 		host, exists := influx.ipToHost[ip]
 		if !exists {
 			hosts, err := net.LookupAddr(ip)
-			if err == nil {
+			if err == nil && len(hosts) > 0 && hosts[0] != "" {
 				host = hosts[0]
+			} else {
+				host = ip
 			}
 			influx.ipToHost[ip] = host
 		}
@@ -112,9 +114,8 @@ func (influx *InfluxOutput) writePoints(msg *dnstap.Message) {
 	point := influxdb2.NewPointWithMeasurement(influx.measurement).AddTag("tap_type", msg.Type.String())
 	host := influx.getHost(msg.QueryAddress)
 	if len(host) > 0 {
-		point.AddField("qhost", host)
+		point.AddTag("qhost", host)
 	}
-	addTagAddress(point, "qaddress", msg.QueryAddress)
 
 	var dnsMsg *dns.Msg
 

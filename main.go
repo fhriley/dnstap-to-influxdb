@@ -6,14 +6,17 @@ import (
 	influxdb2 "github.com/influxdata/influxdb-client-go"
 	flag "github.com/spf13/pflag"
 	"os"
+	"time"
 )
 
 var (
-	flagVerbose     bool
+	flagLogLevel    uint
 	flagFile        bool
 	flagMeasurement string
 	flagBucket      string
 	flagAuthToken   string
+	flagOrg         string
+	flagBatchSize   uint
 )
 
 func main() {
@@ -22,11 +25,13 @@ func main() {
 		flag.PrintDefaults()
 	}
 
-	flag.BoolVarP(&flagVerbose, "verbose", "v", false, "turn on verbose logging")
+	flag.UintVarP(&flagLogLevel, "loglevel", "l", 1, "turn on verbose logging")
 	flag.BoolVarP(&flagFile, "file", "f", false, "input is a file rather than a unix socket")
 	flag.StringVarP(&flagMeasurement, "measurement", "m", "queries", "the influxdb measurement name")
-	flag.StringVarP(&flagBucket, "bucket", "b", "dns/autogen", "the influxdb bucket name")
+	flag.StringVarP(&flagBucket, "bucket", "b", "dns", "the influxdb bucket name")
 	flag.StringVarP(&flagAuthToken, "token", "t", "", "the influxdb auth token")
+	flag.StringVarP(&flagOrg, "org", "o", "", "the influxdb org")
+	flag.UintVarP(&flagBatchSize, "batch", "s", 32, "the write batch size")
 	flag.Parse()
 
 	args := flag.Args()
@@ -38,12 +43,11 @@ func main() {
 	influxdb := args[0]
 	name := args[1]
 
-	logLevel := 1
-	if flagVerbose {
-		logLevel = 3
-	}
-	options := influxdb2.DefaultOptions().SetLogLevel(uint(logLevel))
-	influx := NewInfluxOutput(influxdb, flagAuthToken, "", flagBucket, flagMeasurement, options)
+	options := influxdb2.DefaultOptions().
+		SetLogLevel(flagLogLevel).
+		SetBatchSize(flagBatchSize).
+		SetPrecision(time.Millisecond)
+	influx := NewInfluxOutput(influxdb, flagAuthToken, flagOrg, flagBucket, flagMeasurement, options)
 	defer influx.Close()
 	go influx.RunOutputLoop()
 	influx.LogErrors()
