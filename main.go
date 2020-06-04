@@ -10,13 +10,15 @@ import (
 )
 
 var (
-	flagLogLevel    uint
-	flagFile        bool
-	flagMeasurement string
-	flagBucket      string
-	flagAuthToken   string
-	flagOrg         string
-	flagBatchSize   uint
+	flagLogLevel        uint
+	flagFile            bool
+	flagMeasurement     string
+	flagBucket          string
+	flagAuthToken       string
+	flagOrg             string
+	flagBatchSize       uint
+	flagBufferSize      uint
+	flagFlushIntervalMs uint
 )
 
 func main() {
@@ -31,7 +33,9 @@ func main() {
 	flag.StringVarP(&flagBucket, "bucket", "b", "dns", "the influxdb bucket name")
 	flag.StringVarP(&flagAuthToken, "token", "t", "", "the influxdb auth token")
 	flag.StringVarP(&flagOrg, "org", "o", "", "the influxdb org")
-	flag.UintVarP(&flagBatchSize, "batch", "s", 32, "the write batch size")
+	flag.UintVarP(&flagBatchSize, "batch", "c", 1000, "the write batch size")
+	flag.UintVarP(&flagBufferSize, "buffer", "r", 1000, "the write buffer size")
+	flag.UintVarP(&flagFlushIntervalMs, "flush", "u", 1000, "the write flush interval in ms")
 	flag.Parse()
 
 	args := flag.Args()
@@ -46,8 +50,9 @@ func main() {
 	options := influxdb2.DefaultOptions().
 		SetLogLevel(flagLogLevel).
 		SetBatchSize(flagBatchSize).
+		SetFlushInterval(flagFlushIntervalMs).
 		SetPrecision(time.Millisecond)
-	influx := NewInfluxOutput(influxdb, flagAuthToken, flagOrg, flagBucket, flagMeasurement, options)
+	influx := NewInfluxOutput(influxdb, flagAuthToken, flagOrg, flagBucket, flagMeasurement, flagBufferSize, options)
 	defer influx.Close()
 	go influx.RunOutputLoop()
 	influx.LogErrors()

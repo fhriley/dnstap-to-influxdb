@@ -23,12 +23,12 @@ type InfluxOutput struct {
 	measurement string
 }
 
-func NewInfluxOutput(serverUrl string, authToken string, org string, bucket string, measurement string, options *influxdb2.Options) *InfluxOutput {
+func NewInfluxOutput(serverUrl string, authToken string, org string, bucket string, measurement string, bufferSize uint, options *influxdb2.Options) *InfluxOutput {
 	client := influxdb2.NewClientWithOptions(serverUrl, authToken, options)
 	return &InfluxOutput{
 		client:      client,
 		writeApi:    client.WriteApi(org, bucket),
-		data:        make(chan []byte, 32),
+		data:        make(chan []byte, bufferSize),
 		wait:        make(chan bool),
 		ipToHost:    make(map[string]string),
 		measurement: measurement,
