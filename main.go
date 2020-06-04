@@ -23,6 +23,7 @@ var (
 
 func main() {
 	flag.Usage = func() {
+		//noinspection GoUnhandledErrorResult
 		fmt.Fprintf(os.Stderr, "%s <influxdb_url> <sock_or_file>\n", os.Args[0])
 		flag.PrintDefaults()
 	}
@@ -60,6 +61,7 @@ func main() {
 	if flagFile {
 		input, err := dnstap.NewFrameStreamInputFromFilename(name)
 		if err != nil {
+			//noinspection GoUnhandledErrorResult
 			fmt.Fprintf(os.Stderr, "dnstap: Failed to open input file %s: %v\n", name, err)
 			os.Exit(1)
 		}
@@ -68,6 +70,7 @@ func main() {
 	} else {
 		input, err := dnstap.NewFrameStreamSockInputFromPath(name)
 		if err != nil {
+			//noinspection GoUnhandledErrorResult
 			fmt.Fprintf(os.Stderr, "dnstap: Failed to open unix socket %s: %v\n", name, err)
 			os.Exit(1)
 		}

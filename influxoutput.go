@@ -83,6 +83,7 @@ func addDnsMsg(point *write.Point, msg *dns.Msg) {
 	}
 }
 
+//noinspection GoUnusedFunction
 func getCnames(msg *dns.Msg) map[string]string {
 	cnames := make(map[string]string)
 	if len(msg.Answer) > 0 {
@@ -183,7 +184,6 @@ func (influx *InfluxOutput) RunOutputLoop() {
 	for frame := range influx.data {
 		if err := proto.Unmarshal(frame, dt); err != nil {
 			log.Fatalf("dnstap.TextOutput: proto.Unmarshal() failed: %s\n", err)
-			break
 		}
 		if *dt.Type == dnstap.Dnstap_MESSAGE {
 			influx.writePoints(dt.Message)
