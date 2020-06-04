@@ -42,6 +42,7 @@ func (influx *InfluxOutput) GetOutputChannel() chan []byte {
 func (influx *InfluxOutput) Close() {
 	close(influx.data)
 	<-influx.wait
+	influx.writeApi.Flush()
 	influx.client.Close()
 }
 
