@@ -73,9 +73,12 @@ func addDnsMsg(point *write.Point, msg *dns.Msg) {
 	if msg != nil {
 		point.AddField("id", int(msg.MsgHdr.Id))
 		point.AddTag("status", dns.RcodeToString[msg.MsgHdr.Rcode])
-		if len(msg.Question) > 0 {
+		if msg.Question != nil && len(msg.Question) > 0 {
 			point.AddTag("qname", msg.Question[0].Name)
 			point.AddTag("qtype", dns.Type(msg.Question[0].Qtype).String())
+		}
+		if msg.Answer != nil && len(msg.Answer) > 0 {
+			point.AddField("ttl", msg.Answer[0].Header().Ttl)
 		}
 	}
 }
