@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	dnstap "github.com/dnstap/golang-dnstap"
 	"github.com/golang/protobuf/proto"
 	"github.com/miekg/dns"
@@ -21,6 +22,7 @@ type DnsTapDecoder struct {
 	channel    chan []byte
 	processors []Processor
 	ipToHost   map[string]string
+	resolver   net.Resolver
 }
 
 func NewDnsTapDecoder(bufferSize uint) *DnsTapDecoder {
@@ -28,6 +30,16 @@ func NewDnsTapDecoder(bufferSize uint) *DnsTapDecoder {
 		channel:    make(chan []byte, bufferSize),
 		processors: make([]Processor, 0),
 		ipToHost:   make(map[string]string),
+		resolver: net.Resolver{
+			PreferGo:     true,
+			StrictErrors: false,
+			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+				d := net.Dialer{
+					Timeout: time.Millisecond * 1000,
+				}
+				return d.DialContext(ctx, "udp", "127.0.0.1:5053")
+			},
+		},
 	}
 }
 
@@ -63,7 +75,7 @@ func (dec *DnsTapDecoder) getHost(addr []byte) string {
 		ip := net.IP(addr).String()
 		host, exists := dec.ipToHost[ip]
 		if !exists {
-			hosts, err := net.LookupAddr(ip)
+			hosts, err := dec.resolver.LookupAddr(context.Background(), ip)
 			if err == nil && len(hosts) > 0 && hosts[0] != "" {
 				host = hosts[0]
 			} else {
