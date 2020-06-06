@@ -24,6 +24,8 @@ var (
 	flagBlockFile       string
 	flagWhitelistFile   string
 	flagBlacklistFile   string
+	flagUpdatePort      uint
+	flagDontExit        bool
 )
 
 func main() {
@@ -48,6 +50,8 @@ func main() {
 	flag.StringVar(&flagBlockFile, "block", "/web/hblock.rpz", "the hblock rpz file")
 	flag.StringVar(&flagWhitelistFile, "white", "/web/whitelist.rpz", "the whitelist rpz file")
 	flag.StringVar(&flagBlacklistFile, "black", "/web/blacklist.rpz", "the blacklist rpz file")
+	flag.UintVarP(&flagUpdatePort, "port", "p", 12760, "the port that listens for update commands")
+	flag.BoolVar(&flagDontExit, "dont-exit", false, "don't exit when finished (for testing)")
 	flag.Parse()
 
 	args := flag.Args()
@@ -69,7 +73,7 @@ func main() {
 	influx := NewInfluxProcessor(influxdb, flagAuthToken, flagOrg, flagBucket, flagMeasurement, flagBufferSize, options)
 	influx.LogErrors()
 
-	cnames := NewCnameProcessor(flagBlockFile, flagWhitelistFile, flagBlacklistFile, flagBufferSize)
+	cnames := NewCnameProcessor(flagBlockFile, flagWhitelistFile, flagBlacklistFile, flagBufferSize, flagUpdatePort)
 
 	decoder.AddProcessor(influx)
 	decoder.AddProcessor(cnames)
@@ -98,7 +102,9 @@ func main() {
 		input.Wait()
 	}
 
-	close(decoder.GetChannel())
+	if !flagDontExit {
+		close(decoder.GetChannel())
+	}
 	wg.Wait()
 	os.Exit(0)
 }
