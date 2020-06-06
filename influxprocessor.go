@@ -47,6 +47,7 @@ func (influx *InfluxProcessor) Run(wg *sync.WaitGroup) {
 
 func (influx *InfluxProcessor) writePoints(msg *Message) {
 	point := influxdb2.NewPointWithMeasurement(influx.measurement).AddTag("tap_type", msg.dnstapMessage.Type.String())
+	point.AddTag("qaddress", net.IP(msg.dnstapMessage.QueryAddress).String())
 	if len(msg.host) > 0 {
 		point.AddTag("qhost", msg.host)
 	}
