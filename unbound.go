@@ -8,11 +8,6 @@ import (
 
 type UnboundCommand int
 
-type UnboundProcessor interface {
-	GetChannel() chan *UnboundCommandMessage
-	Run(wg *sync.WaitGroup)
-}
-
 const (
 	ZoneAdd    UnboundCommand = 1
 	ZoneRemove                = 2

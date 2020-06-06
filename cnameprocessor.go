@@ -19,13 +19,13 @@ type CnameProcessor struct {
 }
 
 func addKeys(destMap *map[string]bool, keysMap *map[string]bool) {
-	for key, _ := range *keysMap {
+	for key := range *keysMap {
 		(*destMap)[key] = true
 	}
 }
 
 func removeKeys(destMap *map[string]bool, keysMap *map[string]bool) {
-	for key, _ := range *keysMap {
+	for key := range *keysMap {
 		delete(*destMap, key)
 	}
 }
@@ -79,6 +79,7 @@ func loadRpzFile(path string) *map[string]bool {
 		log.WithError(err).Errorf("Failed to open %s", path)
 		return &domains
 	}
+	//noinspection GoUnhandledErrorResult
 	defer file.Close()
 
 	re := regexp.MustCompile(`^(local-zone:\s+")?(([a-z0-9]+([-a-z0-9]+)*\.)+[a-z]{2,})`)
