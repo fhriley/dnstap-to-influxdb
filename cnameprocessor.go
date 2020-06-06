@@ -53,27 +53,30 @@ func (proc *CnameProcessor) GetChannel() chan *Message {
 }
 
 func (proc *CnameProcessor) Run(wg *sync.WaitGroup) {
+	unboundWg := sync.WaitGroup{}
+	unboundWg.Add(1)
+
+	go proc.unbound.Run(&unboundWg)
+
 	for message := range proc.messages {
 		proc.processMessage(message)
 	}
-	proc.unbound.Destroy()
+
+	close(proc.unbound.GetChannel())
+	unboundWg.Wait()
 	wg.Done()
 }
 
 func loadRpzFile(path string) *map[string]bool {
 	domains := make(map[string]bool)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		log.WithFields(log.Fields{
-			"file": path,
-		}).Warning("Doesn't exist")
+		log.Warningf("%s doesn't exist", path)
 		return &domains
 	}
 
 	file, err := os.Open(path)
 	if err != nil {
-		log.WithError(err).WithFields(log.Fields{
-			"file": path,
-		}).Error("Failed to open file")
+		log.WithError(err).Errorf("Failed to open %s", path)
 		return &domains
 	}
 	defer file.Close()
@@ -89,9 +92,7 @@ func loadRpzFile(path string) *map[string]bool {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		log.WithError(err).WithFields(log.Fields{
-			"file": file.Name(),
-		}).Error("Failed to read file")
+		log.WithError(err).Errorf("Failed to read %s", file.Name())
 		return &domains
 	}
 
@@ -129,18 +130,15 @@ func (proc *CnameProcessor) processMessage(message *Message) {
 				break
 			}
 			if (*proc.blockedDomains)[cname] {
-				log.WithFields(log.Fields{
-					"qname": qname,
-					"cname": cname,
-				}).Info("Blocking qname because of blocked cname")
+				log.Infof("Blocking \"%s\" because of blocked cname \"%s\"", qname, cname)
 
 				(*proc.blockedCnames)[qname] = cname
 				(*proc.blockedDomains)[qname] = true
 
 				zone := fmt.Sprintf("%s.", qname)
-				err := proc.unbound.ZoneAdd(zone, "always_nxdomain")
-				if err != nil {
-					log.WithError(err).Error("unbound.ZoneAdd failed")
+				proc.unbound.GetChannel() <- &UnboundCommandMessage{
+					cmd:    ZoneAdd,
+					domain: zone,
 				}
 
 				break
