@@ -146,6 +146,8 @@ func (proc *CnameProcessor) updateHandler(w http.ResponseWriter, req *http.Reque
 		proc.httpMutex.Lock()
 		defer proc.httpMutex.Unlock()
 
+		log.Infof("CNAME handler got update command: %d", command)
+
 		blockedDomains, err := getBlockedDomains(proc.blockedFile, proc.whitelistFile, proc.blacklistFile)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("something went wrong: %s", err), http.StatusInternalServerError)
@@ -154,6 +156,8 @@ func (proc *CnameProcessor) updateHandler(w http.ResponseWriter, req *http.Reque
 			proc.commands <- &cmdObj
 			w.WriteHeader(http.StatusOK)
 		}
+
+		log.Info("CNAME handler finished update")
 	} else {
 		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
 	}
