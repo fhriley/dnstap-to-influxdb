@@ -18,10 +18,15 @@ type Decoder interface {
 	Run(wg *sync.WaitGroup)
 }
 
+type hostItem struct {
+	host      string
+	timestamp time.Time
+}
+
 type DnsTapDecoder struct {
 	channel    chan []byte
 	processors []Processor
-	ipToHost   map[string]string
+	ipToHost   map[string]*hostItem
 	resolver   net.Resolver
 }
 
@@ -29,7 +34,7 @@ func NewDnsTapDecoder(resolver string, bufferSize uint) *DnsTapDecoder {
 	return &DnsTapDecoder{
 		channel:    make(chan []byte, bufferSize),
 		processors: make([]Processor, 0),
-		ipToHost:   make(map[string]string),
+		ipToHost:   make(map[string]*hostItem),
 		resolver: net.Resolver{
 			PreferGo:     true,
 			StrictErrors: false,
@@ -72,18 +77,19 @@ func getDnsMsg(msg []byte) *dns.Msg {
 
 func (dec *DnsTapDecoder) getHost(addr []byte) string {
 	if addr != nil {
+		now := time.Now()
 		ip := net.IP(addr).String()
 		host, exists := dec.ipToHost[ip]
-		if !exists {
+		if !exists || host.timestamp.Add(time.Duration(time.Hour)).Before(now) {
 			hosts, err := dec.resolver.LookupAddr(context.Background(), ip)
 			if err == nil && len(hosts) > 0 && hosts[0] != "" {
-				host = hosts[0]
-			} else {
-				host = ip
+				host = &hostItem{hosts[0], now}
+			} else if host == nil {
+				host = &hostItem{ip, now}
 			}
 			dec.ipToHost[ip] = host
 		}
-		return host
+		return host.host
 	}
 	return ""
 }
