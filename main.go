@@ -26,6 +26,7 @@ var (
 	flagBlacklistFile   string
 	flagUpdatePort      uint
 	flagDontExit        bool
+	flagResolver        string
 )
 
 func main() {
@@ -52,6 +53,7 @@ func main() {
 	flag.StringVar(&flagBlacklistFile, "black", "/web/blacklist.rpz", "the blacklist rpz file")
 	flag.UintVarP(&flagUpdatePort, "port", "p", 12760, "the port that listens for update commands")
 	flag.BoolVar(&flagDontExit, "dont-exit", false, "don't exit when finished (for testing)")
+	flag.StringVar(&flagResolver, "resolver", "127.0.0.1:5053", "the resolver to use for reverse lookups")
 	flag.Parse()
 
 	args := flag.Args()
@@ -63,7 +65,7 @@ func main() {
 	influxdb := args[0]
 	name := args[1]
 
-	decoder := NewDnsTapDecoder(flagBufferSize)
+	decoder := NewDnsTapDecoder(flagResolver, flagBufferSize)
 
 	options := influxdb2.DefaultOptions().
 		SetLogLevel(flagLogLevel).

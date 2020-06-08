@@ -25,7 +25,7 @@ type DnsTapDecoder struct {
 	resolver   net.Resolver
 }
 
-func NewDnsTapDecoder(bufferSize uint) *DnsTapDecoder {
+func NewDnsTapDecoder(resolver string, bufferSize uint) *DnsTapDecoder {
 	return &DnsTapDecoder{
 		channel:    make(chan []byte, bufferSize),
 		processors: make([]Processor, 0),
@@ -37,7 +37,7 @@ func NewDnsTapDecoder(bufferSize uint) *DnsTapDecoder {
 				d := net.Dialer{
 					Timeout: time.Millisecond * 1000,
 				}
-				return d.DialContext(ctx, "udp", "127.0.0.1:5053")
+				return d.DialContext(ctx, "udp", resolver)
 			},
 		},
 	}
