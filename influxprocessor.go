@@ -71,10 +71,10 @@ func (influx *InfluxProcessor) writePoints(msg *Message) {
 			point.AddTag("raddress", net.IP(msg.dnstapMessage.ResponseAddress).String())
 		}
 		if msg.dnsMessage != nil {
-			if msg.dnsMessage.Rcode == dns.RcodeSuccess && len(msg.dnsMessage.Answer) == 0 {
+			if msg.dnsMessage.Question != nil && len(msg.dnsMessage.Question) > 0 &&
+				(msg.dnsMessage.Question[0].Qtype == dns.TypeA || msg.dnsMessage.Question[0].Qtype == dns.TypeAAAA) &&
+				msg.dnsMessage.Rcode == dns.RcodeSuccess && len(msg.dnsMessage.Answer) == 0 {
 				point.AddField("nodata", true)
-			} else {
-				point.AddField("nodata", false)
 			}
 		}
 	}
