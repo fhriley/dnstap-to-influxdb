@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	influxdb2 "github.com/influxdata/influxdb-client-go"
+	"github.com/influxdata/influxdb-client-go/api"
 	"github.com/miekg/dns"
 	log "github.com/sirupsen/logrus"
 	"net/http"
@@ -11,6 +13,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 )
 
 type CnameCommand int
@@ -36,16 +39,18 @@ type Command struct {
 }
 
 type CnameProcessor struct {
-	messages       chan *Message
-	commands       chan *Command
-	blockedFile    string
-	whitelistFile  string
-	blacklistFile  string
-	blockedCnames  *map[string]string
-	blockedDomains *map[string]bool
-	unbound        *Unbound
-	httpServer     *http.Server
-	httpMutex      sync.Mutex
+	messages          chan *Message
+	commands          chan *Command
+	blockedFile       string
+	whitelistFile     string
+	blacklistFile     string
+	blockedCnames     *map[string]string
+	blockedDomains    *map[string]bool
+	unbound           *Unbound
+	httpServer        *http.Server
+	httpMutex         sync.Mutex
+	influxMeasurement string
+	influxWriteApi    *api.WriteApi
 }
 
 func addKeys(destMap *map[string]bool, keysMap *map[string]bool) {
@@ -60,7 +65,7 @@ func removeKeys(destMap *map[string]bool, keysMap *map[string]bool) {
 	}
 }
 
-func NewCnameProcessor(blockedFile, whitelistFile, blacklistFile string, bufferSize, port uint) *CnameProcessor {
+func NewCnameProcessor(influxWriteApi *api.WriteApi, influxMeasurement string, blockedFile, whitelistFile, blacklistFile string, bufferSize, port uint) *CnameProcessor {
 	blockedDomains, err := getBlockedDomains(blockedFile, whitelistFile, blacklistFile)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to get blocked domains")
@@ -68,15 +73,17 @@ func NewCnameProcessor(blockedFile, whitelistFile, blacklistFile string, bufferS
 	blockedCnames := make(map[string]string)
 
 	return &CnameProcessor{
-		messages:       make(chan *Message, bufferSize),
-		commands:       make(chan *Command, bufferSize),
-		blockedFile:    blockedFile,
-		blacklistFile:  blacklistFile,
-		whitelistFile:  whitelistFile,
-		blockedCnames:  &blockedCnames,
-		blockedDomains: blockedDomains,
-		unbound:        NewUnbound(),
-		httpServer:     &http.Server{Addr: fmt.Sprintf(":%d", port)},
+		messages:          make(chan *Message, bufferSize),
+		commands:          make(chan *Command, bufferSize),
+		blockedFile:       blockedFile,
+		blacklistFile:     blacklistFile,
+		whitelistFile:     whitelistFile,
+		blockedCnames:     &blockedCnames,
+		blockedDomains:    blockedDomains,
+		unbound:           NewUnbound(),
+		httpServer:        &http.Server{Addr: fmt.Sprintf(":%d", port)},
+		influxMeasurement: influxMeasurement,
+		influxWriteApi:    influxWriteApi,
 	}
 }
 
@@ -232,6 +239,13 @@ func (proc *CnameProcessor) processUpdateLists(blockedDomains *map[string]bool) 
 				domain: qname,
 			}
 			delete(*proc.blockedCnames, qname)
+
+			point := influxdb2.NewPointWithMeasurement(proc.influxMeasurement).
+				AddTag("qname", qname).
+				AddTag("cname", cname).
+				AddField("blocked", false).
+				SetTime(time.Now())
+			(*proc.influxWriteApi).WritePoint(point)
 		}
 	}
 
@@ -278,6 +292,13 @@ func (proc *CnameProcessor) processDnstapMessage(message *Message) {
 					cmd:    ZoneAdd,
 					domain: qname,
 				}
+
+				point := influxdb2.NewPointWithMeasurement(proc.influxMeasurement).
+					AddTag("qname", qname).
+					AddTag("cname", cname).
+					AddField("blocked", true).
+					SetTime(time.Now())
+				(*proc.influxWriteApi).WritePoint(point)
 
 				break
 			} else {

@@ -12,21 +12,22 @@ import (
 )
 
 var (
-	flagLogLevel        uint
-	flagFile            bool
-	flagMeasurement     string
-	flagBucket          string
-	flagAuthToken       string
-	flagOrg             string
-	flagBatchSize       uint
-	flagBufferSize      uint
-	flagFlushIntervalMs uint
-	flagBlockFile       string
-	flagWhitelistFile   string
-	flagBlacklistFile   string
-	flagUpdatePort      uint
-	flagDontExit        bool
-	flagResolver        string
+	flagLogLevel           uint
+	flagFile               bool
+	flagQueriesMeasurement string
+	flagCnamesMeasurement  string
+	flagBucket             string
+	flagAuthToken          string
+	flagOrg                string
+	flagBatchSize          uint
+	flagBufferSize         uint
+	flagFlushIntervalMs    uint
+	flagBlockFile          string
+	flagWhitelistFile      string
+	flagBlacklistFile      string
+	flagUpdatePort         uint
+	flagDontExit           bool
+	flagResolver           string
 )
 
 func main() {
@@ -41,7 +42,8 @@ func main() {
 
 	flag.UintVarP(&flagLogLevel, "loglevel", "l", 1, "turn on verbose logging")
 	flag.BoolVarP(&flagFile, "file", "f", false, "input is a file rather than a unix socket")
-	flag.StringVarP(&flagMeasurement, "measurement", "m", "queries", "the influxdb measurement name")
+	flag.StringVar(&flagQueriesMeasurement, "queries-measurement", "queries", "the influxdb queries measurement name")
+	flag.StringVar(&flagCnamesMeasurement, "cnames-measurement", "cnames", "the influxdb cnames measurement name")
 	flag.StringVarP(&flagBucket, "bucket", "b", "dns", "the influxdb bucket name")
 	flag.StringVarP(&flagAuthToken, "token", "t", "", "the influxdb auth token")
 	flag.StringVarP(&flagOrg, "org", "o", "", "the influxdb org")
@@ -72,10 +74,10 @@ func main() {
 		SetBatchSize(flagBatchSize).
 		SetFlushInterval(flagFlushIntervalMs).
 		SetPrecision(time.Millisecond)
-	influx := NewInfluxProcessor(influxdb, flagAuthToken, flagOrg, flagBucket, flagMeasurement, flagBufferSize, options)
+	influx := NewInfluxProcessor(influxdb, flagAuthToken, flagOrg, flagBucket, flagQueriesMeasurement, flagBufferSize, options)
 	influx.LogErrors()
 
-	cnames := NewCnameProcessor(flagBlockFile, flagWhitelistFile, flagBlacklistFile, flagBufferSize, flagUpdatePort)
+	cnames := NewCnameProcessor(influx.GetWriteApi(), flagCnamesMeasurement, flagBlockFile, flagWhitelistFile, flagBlacklistFile, flagBufferSize, flagUpdatePort)
 
 	decoder.AddProcessor(influx)
 	decoder.AddProcessor(cnames)

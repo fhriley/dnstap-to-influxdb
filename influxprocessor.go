@@ -32,6 +32,10 @@ func NewInfluxProcessor(serverUrl string, authToken string, org string, bucket s
 	}
 }
 
+func (influx *InfluxProcessor) GetWriteApi() *api.WriteApi {
+	return &influx.writeApi
+}
+
 func (influx *InfluxProcessor) GetChannel() chan *Message {
 	return influx.messages
 }
