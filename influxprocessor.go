@@ -70,6 +70,13 @@ func (influx *InfluxProcessor) writePoints(msg *Message) {
 		if msg.dnstapMessage.ResponseAddress != nil {
 			point.AddTag("raddress", net.IP(msg.dnstapMessage.ResponseAddress).String())
 		}
+		if msg.dnsMessage != nil {
+			if msg.dnsMessage.Rcode == dns.RcodeSuccess && len(msg.dnsMessage.Answer) == 0 {
+				point.AddField("nodata", true)
+			} else {
+				point.AddField("nodata", false)
+			}
+		}
 	}
 
 	if msg.dnsMessage != nil {
